@@ -3,6 +3,7 @@ import streamlit as st
 from datetime import datetime
 import pandas as pd
 import io
+import os
 
 st.set_page_config(page_title="Mood Detector", page_icon="😊", layout="centered")
 st.title("🧠 Mood Detector — Sentiment Analyzer")
@@ -11,18 +12,30 @@ st.markdown("Type how you're feeling (or paste a sentence) and I'll detect your 
 @st.cache_resource
 def get_vader():
     import nltk
-    try:
-        from nltk.sentiment.vader import SentimentIntensityAnalyzer
-    except Exception:
+    # prepare local nltk_data folder next to this script
+    local_nltk_dir = os.path.join(os.path.dirname(__file__), "nltk_data")
+    if not os.path.exists(local_nltk_dir):
         try:
-            nltk.download('vader_lexicon')
-            from nltk.sentiment.vader import SentimentIntensityAnalyzer
+            os.makedirs(local_nltk_dir, exist_ok=True)
+        except Exception:
+            pass
+    if local_nltk_dir not in nltk.data.path:
+        nltk.data.path.insert(0, local_nltk_dir)
+    try:
+        nltk.data.find('sentiment/vader_lexicon')
+    except LookupError:
+        try:
+            nltk.download('vader_lexicon', download_dir=local_nltk_dir, quiet=True)
+            if local_nltk_dir not in nltk.data.path:
+                nltk.data.path.insert(0, local_nltk_dir)
         except Exception as e:
             raise RuntimeError(
-                "NLTK vader_lexicon download failed.\n"
-                "Please check your internet connection or run this locally:\n"
-                "    python -c \"import nltk; nltk.download('vader_lexicon')\""
+                "NLTK vader_lexicon is missing and automatic download failed.\n"
+                "If this persists, download the resource locally and add the 'nltk_data' folder to the repo.\n"
+                "Locally you can run:\n"
+                "  python -c \"import nltk; nltk.download('vader_lexicon', download_dir='nltk_data')\"\n"
             ) from e
+    from nltk.sentiment.vader import SentimentIntensityAnalyzer
     return SentimentIntensityAnalyzer()
 
 sia = get_vader()
@@ -85,7 +98,8 @@ st.subheader("Mood Log & Trend")
 
 if st.session_state.log:
     df = pd.DataFrame(st.session_state.log)
-    st.dataframe(df[["timestamp", "text", "mood", "compound"]].sort_values(by="timestamp", ascending=False).reset_index(drop=True))
+    st.dataframe(df[["timestamp", "text", "mood", "compound"]]
+                 .sort_values(by="timestamp", ascending=False).reset_index(drop=True))
     chart_df = df[["timestamp", "compound"]].copy()
     chart_df["ts"] = pd.to_datetime(chart_df["timestamp"])
     chart_df = chart_df.sort_values("ts")
