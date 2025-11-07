@@ -17,9 +17,12 @@ def get_vader():
         try:
             nltk.download('vader_lexicon')
             from nltk.sentiment.vader import SentimentIntensityAnalyzer
-        except Exception:
-            # Last resort: raise informative error
-            raise RuntimeError('NLTK vader_lexicon download failed. Check your internet connection or run: python -c \"import nltk; nltk.download(\\'vader_lexicon\\')\"')
+        except Exception as e:
+            raise RuntimeError(
+                "NLTK vader_lexicon download failed.\n"
+                "Please check your internet connection or run this locally:\n"
+                "    python -c \"import nltk; nltk.download('vader_lexicon')\""
+            ) from e
     return SentimentIntensityAnalyzer()
 
 sia = get_vader()
@@ -96,4 +99,4 @@ else:
     st.info("No mood entries yet. Type something and press Analyze to start logging.")
 
 st.markdown("---")
-st.markdown("**About:** This app uses the VADER sentiment analyzer (suitable for short social-text-like sentences). It's a lightweight prototype — not a medical or clinical tool.")
+st.markdown("**About:** This app uses the VADER sentiment analyzer (NLTK) to detect emotional tone in short text. It's a lightweight prototype — not a medical or clinical tool.")
