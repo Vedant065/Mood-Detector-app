@@ -1,5 +1,5 @@
 streamlit
 textblob
-opencv-python
-numpy
 pandas
+numpy
+opencv-python-headless
