@@ -3,4 +3,6 @@ textblob
 pandas
 numpy
 opencv-python-headless
-deepface
+fer
+mtcnn
+tensorflow
