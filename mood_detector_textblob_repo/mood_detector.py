@@ -10,21 +10,28 @@ st.markdown("Type how you're feeling (or paste a sentence) and I'll detect your 
 
 @st.cache_resource
 def get_vader():
+    """
+    Loads the VADER sentiment analyzer. Automatically downloads the vader_lexicon
+    if it’s missing, and provides a helpful error message if it fails.
+    """
     try:
         from nltk.sentiment.vader import SentimentIntensityAnalyzer
     except Exception:
         try:
-            nltk.download('vader_lexicon')
+            nltk.download("vader_lexicon")
             from nltk.sentiment.vader import SentimentIntensityAnalyzer
         except Exception as e:
             raise RuntimeError(
-                "NLTK vader_lexicon download failed.\n"
-                "Please check your internet connection or run this locally:\n"
+                "⚠️ NLTK 'vader_lexicon' download failed.\n"
+                "Please check your internet connection or run this manually:\n"
                 "    python -c \"import nltk; nltk.download('vader_lexicon')\""
             ) from e
     return SentimentIntensityAnalyzer()
 
+
+# Initialize analyzer
 sia = get_vader()
+
 
 def analyze_text(text):
     scores = sia.polarity_scores(text)
@@ -46,11 +53,17 @@ def analyze_text(text):
         emoji = "😢"
     return {"mood": mood, "emoji": emoji, "scores": scores, "compound": c}
 
+
+# Session state to store logs
 if "log" not in st.session_state:
     st.session_state.log = []
 
+
+# ---- UI ----
 with st.form("mood_form"):
-    text = st.text_area("How are you feeling?", placeholder="I am feeling great today!", height=120)
+    text = st.text_area(
+        "How are you feeling?", placeholder="I am feeling great today!", height=120
+    )
     submitted = st.form_submit_button("Analyze")
 
 if submitted and text.strip():
@@ -64,10 +77,11 @@ if submitted and text.strip():
         "Positive": "Nice — keep the momentum going!",
         "Neutral": "A neutral day — maybe try a quick walk or a break?",
         "Negative": "Sorry you feel that way. Try a short breathing exercise.",
-        "Very Negative": "If you’re struggling, consider talking to a friend or seeking support."
+        "Very Negative": "If you’re struggling, consider talking to a friend or seeking support.",
     }
     st.info(suggestions[result["mood"]])
 
+    # Save to log
     entry = {
         "timestamp": datetime.now().isoformat(),
         "text": text,
@@ -75,23 +89,32 @@ if submitted and text.strip():
         "compound": result["compound"],
         "neg": result["scores"]["neg"],
         "neu": result["scores"]["neu"],
-        "pos": result["scores"]["pos"]
+        "pos": result["scores"]["pos"],
     }
     st.session_state.log.append(entry)
+
 
 st.markdown("---")
 st.subheader("Mood Log & Trend")
 
 if st.session_state.log:
     df = pd.DataFrame(st.session_state.log)
-    st.dataframe(df[["timestamp", "text", "mood", "compound"]]
-                 .sort_values(by="timestamp", ascending=False).reset_index(drop=True))
+    st.dataframe(
+        df[["timestamp", "text", "mood", "compound"]]
+        .sort_values(by="timestamp", ascending=False)
+        .reset_index(drop=True)
+    )
+
     chart_df = df[["timestamp", "compound"]].copy()
     chart_df["ts"] = pd.to_datetime(chart_df["timestamp"])
     chart_df = chart_df.sort_values("ts")
     st.line_chart(chart_df.set_index("ts")["compound"])
+
     csv = df.to_csv(index=False).encode("utf-8")
-    st.download_button("Download log as CSV", data=csv, file_name="mood_log.csv", mime="text/csv")
+    st.download_button(
+        "Download log as CSV", data=csv, file_name="mood_log.csv", mime="text/csv"
+    )
+
     if st.button("Clear log"):
         st.session_state.log = []
         st.experimental_rerun()
@@ -99,4 +122,7 @@ else:
     st.info("No mood entries yet. Type something and press Analyze to start logging.")
 
 st.markdown("---")
-st.markdown("**About:** This app uses the VADER sentiment analyzer (NLTK) to detect emotional tone in short text. It's a lightweight prototype — not a medical or clinical tool.")
+st.markdown(
+    "**About:** This app uses NLTK’s VADER sentiment analyzer to detect emotional tone in text. "
+    "It's a lightweight prototype — not a medical or clinical tool."
+)
