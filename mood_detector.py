@@ -1,13 +1,17 @@
+# mood_detector.py
 import streamlit as st
 from datetime import datetime
 import pandas as pd
 
 st.set_page_config(page_title="Mood Detector", page_icon="😊", layout="centered")
 st.title("🧠 Mood Detector — Text + Image Mood Estimator")
-st.markdown("Type a sentence to detect mood from text, or upload a clear photo of a single person to estimate mood from facial expression.")
+st.markdown("Type a sentence to detect mood from text, or upload a clear front-facing photo of a single person to estimate mood from facial expression.")
 
 def analyze_text_blob(text):
-    from textblob import TextBlob
+    try:
+        from textblob import TextBlob
+    except Exception:
+        return {"error": "TextBlob not installed. Install with `pip install textblob`."}
     polarity = TextBlob(text).sentiment.polarity
     c = polarity
     if c >= 0.5:
@@ -24,11 +28,14 @@ def analyze_text_blob(text):
     return {"mood": mood, "emoji": emoji, "scores": scores, "compound": c}
 
 def analyze_image_for_mood(image_bytes):
-    import cv2, numpy as np
+    try:
+        import cv2, numpy as np
+    except Exception:
+        return {"error": "OpenCV or numpy not installed. Install with `pip install opencv-python-headless numpy`."}
     img_array = np.frombuffer(image_bytes, np.uint8)
     img = cv2.imdecode(img_array, cv2.IMREAD_COLOR)
     if img is None:
-        return {"error": "Unable to decode image."}
+        return {"error": "Unable to decode image. Upload a valid JPG/PNG file."}
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + "haarcascade_frontalface_default.xml")
     smile_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + "haarcascade_smile.xml")
@@ -49,9 +56,9 @@ RECOMMENDATIONS = {
     "Very Positive":["Share your joy with a friend","Keep doing what you're doing","Write down 3 things you're grateful for"],
     "Positive":["Go for a short walk","Listen to uplifting music","Call a friend and share good news"],
     "Neutral":["Try a 10-minute guided breathing session","Do a short stretching routine or light yoga","Watch a light-hearted short video"],
-    "Negative":["Try a short breathing exercise","Do 10 minutes of light exercise or yoga","Call a close friend and talk about how you feel"],
-    "Very Negative":["Consider reaching out to someone you trust","Try deep breathing and a short walk","If needed, seek professional support"],
-    "Unknown":["Try a clearer photo or type how you feel","Take a short break and do deep breathing","Reach out to a friend if possible"]
+    "Negative":["Try a short breathing exercise (5 minutes)","Do 10 minutes of light exercise or yoga","Call a close friend and talk about how you feel"],
+    "Very Negative":["Consider reaching out to someone you trust","Try deep breathing + a short walk outside","If needed, seek professional support"],
+    "Unknown":["Try a clearer photo or type how you feel","Take a short break and do deep breathing","Reach out to a friend if comfortable"]
 }
 def get_recommendations(mood, limit=3):
     return RECOMMENDATIONS.get(mood, RECOMMENDATIONS["Neutral"])[:limit]
@@ -65,21 +72,25 @@ with st.form("text_form"):
     submitted_text = st.form_submit_button("Analyze text")
 if submitted_text and text_input.strip():
     text_result = analyze_text_blob(text_input)
-    st.markdown(f"### Result: {text_result['emoji']} **{text_result['mood']}** (Text)")
-    st.write("Polarity score:", round(text_result["compound"],3))
-    st.write("Detailed scores:", text_result["scores"])
-    st.info(get_recommendations(text_result["mood"]))
-    st.session_state.log.append({"timestamp":datetime.now().isoformat(),"source":"text","text":text_input,"mood":text_result["mood"],"score":float(text_result["compound"])})
+    if "error" in text_result:
+        st.error(text_result["error"])
+    else:
+        st.markdown(f"### Result: {text_result['emoji']} **{text_result['mood']}** (Text)")
+        st.write("Polarity score:", round(text_result["compound"],3))
+        st.write("Detailed scores:", text_result["scores"])
+        st.info(get_recommendations(text_result["mood"]))
+        st.session_state.log.append({"timestamp":datetime.now().isoformat(),"source":"text","text":text_input,"mood":text_result["mood"],"score":float(text_result["compound"])})
 
 st.markdown("---")
 
 st.header("Image-based mood estimation")
-st.markdown("Upload a clear front-facing photo of one person.")
+st.markdown("Upload a clear front-facing photo of a single person.")
 img_file = st.file_uploader("Upload an image (jpg/png)", type=["jpg","jpeg","png"])
 if img_file is not None:
     image_bytes = img_file.read()
     st.image(image_bytes, caption="Uploaded image", use_column_width=True)
-    img_result = analyze_image_for_mood(image_bytes)
+    with st.spinner("Analyzing image..."):
+        img_result = analyze_image_for_mood(image_bytes)
     if "error" in img_result:
         st.error(img_result["error"])
     else:
@@ -111,4 +122,4 @@ else:
     st.info("No mood entries yet. Type or upload an image to start logging.")
 
 st.markdown("---")
-st.markdown("Notes: Image-based mood estimation is heuristic (face & smile detection). For production, use a trained model and obtain consent.")
+st.markdown("Notes: Image-based mood estimation is a simple heuristic (face & smile detection) and not clinically accurate. For production use, use a trained facial-emotion model and obtain consent before analyzing people's photos.")
