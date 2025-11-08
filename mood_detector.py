@@ -34,7 +34,7 @@ def analyze_image_for_mood(image_bytes):
     try:
         import numpy as np
         import cv2
-    except Exception as e:
+    except Exception:
         return {"error": "OpenCV/numpy not available. Install opencv-python-headless and numpy in requirements.txt."}
 
     img_array = np.frombuffer(image_bytes, np.uint8)
@@ -130,11 +130,20 @@ st.subheader("Mood Log & Trend")
 if st.session_state.log:
     df = pd.DataFrame(st.session_state.log)
     st.dataframe(df.sort_values(by="timestamp", ascending=False).reset_index(drop=True))
-    text_scores = df[df["source"] == "text"][["timestamp", "score"]].copy()
+
+    # Safely build text_scores only if columns exist and there are text rows
+    text_scores = pd.DataFrame()
+    if "source" in df.columns and "score" in df.columns:
+        text_rows = df[df["source"] == "text"]
+        if not text_rows.empty:
+            if "timestamp" in text_rows.columns and "score" in text_rows.columns:
+                text_scores = text_rows[["timestamp", "score"]].copy()
+
     if not text_scores.empty:
         text_scores["ts"] = pd.to_datetime(text_scores["timestamp"])
         text_scores = text_scores.sort_values("ts")
         st.line_chart(text_scores.set_index("ts")["score"])
+
     csv = df.to_csv(index=False).encode("utf-8")
     st.download_button("Download log as CSV", data=csv, file_name="mood_log.csv", mime="text/csv")
     if st.button("Clear log"):
