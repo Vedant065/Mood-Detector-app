@@ -1,4 +1,4 @@
-# Mood Detector (fixed)
+# Mood Detector
 
 This version auto-downloads the NLTK vader_lexicon if missing.
 
