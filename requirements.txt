@@ -1,5 +1,11 @@
 streamlit
-textblob
-pandas
-numpy
 opencv-python-headless
+numpy
+pandas
+pillow
+textblob
+deepface
+fer
+tensorflow==2.16.1
+tf-keras==2.16.0
+mtcnn
