@@ -2,7 +2,8 @@
 import streamlit as st
 from datetime import datetime
 import pandas as pd
-
+import io
+from PIL import Image
 st.set_page_config(page_title="Mood Detector", page_icon="😊", layout="centered")
 st.title("🧠 Mood Detector — Text + Image Mood Estimator (Emotion)")
 st.markdown(
@@ -32,8 +33,6 @@ def analyze_image_for_mood(image_bytes):
     # Try DeepFace first (best). If not available, try FER. Otherwise fallback to OpenCV smile heuristic.
     # Returns: {"emotion": <label>, "emoji": <emoji>, ...} or {"error": "..."}.
     # Convert image bytes to suitable object for libraries when needed.
-    import io
-    from PIL import Image
     try:
         img = Image.open(io.BytesIO(image_bytes)).convert("RGB")
     except Exception:
@@ -46,7 +45,9 @@ def analyze_image_for_mood(image_bytes):
         # DeepFace.analyze accepts file path or np.ndarray (RGB)
         img_arr = np.array(img)
         # analyse may download models first time — that's okay if environment allows
-        result = DeepFace.analyze(img_arr, actions=["emotion"], enforce_detection=True)
+        result = DeepFace.analyze(img_path=img_arr,actions=["emotion"],enforce_detection=False)
+        if isinstance(result, list):
+            result = result[0]
         dominant = result.get("dominant_emotion")
         # map to common labels and emojis
         label = dominant.lower() if dominant else "unknown"
@@ -54,9 +55,9 @@ def analyze_image_for_mood(image_bytes):
             "happy":"😁","sad":"☹️","angry":"😠","surprise":"😲","surprised":"😲",
             "neutral":"😐","fear":"😨","disgust":"🤢","contempt":"😒"
         }
-        return {"emotion": label, "emoji": emoji_map.get(label,"❓"), "raw": result}
+        return {"emotion": label, "emoji": emoji_map.get(label,"❓")}
     except Exception as e:
-        deepface_err = str(e)
+        st.warning(f"DeepFace failed: {e}")
 
     # 2) FER library
     try:
@@ -90,7 +91,7 @@ def analyze_image_for_mood(image_bytes):
     gray = cv2.cvtColor(img_arr, cv2.COLOR_BGR2GRAY)
     face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + "haarcascade_frontalface_default.xml")
     smile_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + "haarcascade_smile.xml")
-    faces = face_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5, minSize=(80,80))
+    faces = face_cascade.detectMultiScale(gray,scaleFactor=1.2,minNeighbors=6,minSize=(60,60))
     if len(faces) == 0:
         return {"emotion":"unknown", "emoji":"❓", "faces":0}
     faces_sorted = sorted(faces, key=lambda r: r[2]*r[3], reverse=True)
@@ -143,7 +144,7 @@ st.header("Image-based emotion detection")
 st.markdown("Upload a **front-facing** photo of one person for best results.")
 img_file = st.file_uploader("Upload image (jpg/png)", type=["jpg","jpeg","png"])
 if img_file is not None:
-    image_bytes = img_file.read()
+    image_bytes = img_file.getvalue()
     st.image(image_bytes, caption="Uploaded image", use_column_width=True)
     with st.spinner("Analyzing image for emotion..."):
         img_res = analyze_image_for_mood(image_bytes)
@@ -172,11 +173,11 @@ if st.session_state.log:
         ts_df["ts"] = pd.to_datetime(ts_df["timestamp"])
         ts_df = ts_df.sort_values("ts")
         st.line_chart(ts_df.set_index("ts")["score"])
-    csv = df.to_csv(index=False).encode("utf-8")
+    csv = df.to_csv(index=False).encode("utf-8-sig")
     st.download_button("Download log as CSV", data=csv, file_name="mood_log.csv", mime="text/csv")
     if st.button("Clear log"):
         st.session_state.log = []
-        st.experimental_rerun()
+        st.rerun()
 else:
     st.info("No mood entries yet. Type or upload an image to start logging.")
 
