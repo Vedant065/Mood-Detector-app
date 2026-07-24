@@ -238,33 +238,30 @@ Suggestions
 
 ---
 
-# 📷 Screenshots
+## 📸 Screenshots
 
-> Replace these images with your own screenshots.
+### 📝 Text-Based Mood Detection
 
-## 🏠 Home Page
+Analyze the user's textual input using TextBlob sentiment analysis to estimate their emotional state and provide personalized wellness recommendations.
 
-```
-assets/home.png
-```
+![Text Mood Detection](assets/text-mood-detection.png)
 
 ---
 
-## 📝 Text Analysis
+### 😊 Image-Based Emotion Detection
 
-```
-assets/text_detection.png
-```
+Upload a front-facing image to detect facial emotions using DeepFace, FER, and OpenCV, along with personalized recommendations.
 
----
-
-## 😀 Facial Emotion Detection
-
-```
-assets/facial_detection.png
-```
+![Image Emotion Detection](assets/image-emotion-detection.png)
 
 ---
+
+### 📊 Mood Log & Trend Dashboard
+
+Track previous analyses, visualize mood history, and download the complete mood log as a CSV file.
+
+![Mood Log Dashboard](assets/mood-log-dashboard.png)
+
 
 # 📊 Supported Emotions
 
