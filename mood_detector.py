@@ -48,7 +48,8 @@ def analyze_image_for_mood(image_bytes):
         result = DeepFace.analyze(img_path=img_arr,actions=["emotion"],enforce_detection=False)
         if isinstance(result, list):
             result = result[0]
-        dominant = result.get("dominant_emotion")
+
+        dominant = result["dominant_emotion"]
         # map to common labels and emojis
         label = dominant.lower() if dominant else "unknown"
         emoji_map = {
